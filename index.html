@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Do PC velho ao seu servidor offline: guia Project NOMAD</title>
+<meta name="description" content="Passo a passo para transformar um PC antigo em um servidor offline com Wikipedia, mapas e IA local usando Debian e Project NOMAD.">
+<meta name="robots" content="noindex">
+<style>
+:root{
+  --bg:#0f1311; --panel:#171d1a; --line:#27312c; --text:#e8efe9; --muted:#9fb0a6;
+  --accent:#7ee2a8; --warn:#f2c46d; --code:#0a0d0b;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:17px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+.wrap{max-width:760px;margin:0 auto;padding:0 18px}
+header{padding:44px 0 24px;border-bottom:1px solid var(--line)}
+.tag{font:600 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(28px,7vw,42px);line-height:1.12;margin:12px 0 14px;letter-spacing:-.02em}
+.lead{color:var(--muted);margin:0}
+nav{position:sticky;top:0;z-index:5;background:rgba(15,19,17,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav ul{list-style:none;margin:0;padding:10px 18px;display:flex;gap:8px;overflow-x:auto;max-width:760px;margin:0 auto}
+nav a{display:block;white-space:nowrap;text-decoration:none;color:var(--muted);font-size:14px;padding:6px 12px;border:1px solid var(--line);border-radius:999px}
+nav a:hover,nav a:focus-visible{color:var(--text);border-color:var(--accent)}
+section{padding:34px 0 6px;scroll-margin-top:64px}
+h2{font-size:24px;margin:0 0 6px;letter-spacing:-.01em}
+h2 .n{display:inline-grid;place-items:center;width:30px;height:30px;margin-right:10px;border-radius:50%;background:var(--accent);color:#06150d;font:700 15px/1 system-ui}
+h3{font-size:17px;margin:22px 0 6px}
+p{margin:10px 0}
+ul,ol{padding-left:22px}
+li{margin:6px 0}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:16px 0}
+.box.warn{border-color:#5a4a22;background:#1b1810}
+.box.warn b.t{color:var(--warn)}
+.box b.t{display:block;font:700 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;color:var(--accent)}
+.code{position:relative;margin:12px 0}
+pre{margin:0;background:var(--code);border:1px solid var(--line);border-radius:12px;padding:14px 74px 14px 14px;font:14px/1.55 ui-monospace,Menlo,Consolas,monospace;color:#d6f5e2;white-space:pre-wrap;overflow-wrap:anywhere}
+button.copy{position:absolute;top:8px;right:8px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:600 12px system-ui;cursor:pointer}
+button.copy:hover,button.copy:focus-visible{border-color:var(--accent)}
+code{font:0.9em ui-monospace,Menlo,Consolas,monospace;background:var(--code);padding:2px 6px;border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:15px;margin:12px 0}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600}
+.check li{list-style:none;margin-left:-22px}
+.check input{margin-right:10px;accent-color:var(--accent);transform:scale(1.2)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:10px 0}
+summary{cursor:pointer;font-weight:600}
+footer{margin-top:44px;padding:26px 0 60px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="tag">Guia passo a passo</div>
+    <h1>Do PC velho ao seu servidor offline</h1>
+    <p class="lead">Debian 12 + Project NOMAD: Wikipedia, mapas e (se o seu PC aguentar) uma IA que roda sem internet. Do zero, sem precisar saber Linux.</p>
+  </div>
+</header>
+
+<nav aria-label="Seções">
+  <ul>
+    <li><a href="#antes">Antes de começar</a></li>
+    <li><a href="#s1">1 · ISO</a></li>
+    <li><a href="#s2">2 · Pendrive</a></li>
+    <li><a href="#s3">3 · BIOS</a></li>
+    <li><a href="#s4">4 · Debian</a></li>
+    <li><a href="#s5">5 · NOMAD</a></li>
+    <li><a href="#s6">6 · Configurar</a></li>
+    <li><a href="#s7">7 · Testar offline</a></li>
+    <li><a href="#dicas">Problemas</a></li>
+  </ul>
+</nav>
+
+<main class="wrap">
+
+<section id="antes">
+  <h2>Antes de começar</h2>
+  <div class="box warn">
+    <b class="t">Atenção: apaga tudo</b>
+    O computador onde você vai instalar será apagado por completo, e o pendrive também. Faça backup do que importa antes.
+  </div>
+
+  <h3>O que você precisa</h3>
+  <ul class="check">
+    <li><label><input type="checkbox"> Um PC x86 (PC comum ou notebook; Raspberry Pi e Mac não são suportados)</label></li>
+    <li><label><input type="checkbox"> Um pendrive de pelo menos 2 GB (será apagado)</label></li>
+    <li><label><input type="checkbox"> Um segundo computador para preparar o pendrive</label></li>
+    <li><label><input type="checkbox"> Internet na hora de instalar e de baixar o conteúdo (de preferência por cabo de rede)</label></li>
+  </ul>
+
+  <h3>Requisitos do próprio NOMAD (fonte oficial)</h3>
+  <table>
+    <tr><th>Item</th><th>Mínimo</th><th>Ideal para IA</th></tr>
+    <tr><td>Processador</td><td>2 GHz, dois núcleos</td><td>AMD Ryzen 7 ou Intel i7, ou melhor</td></tr>
+    <tr><td>Memória</td><td>4 GB</td><td>32 GB</td></tr>
+    <tr><td>Disco livre</td><td>5 GB (10 GB para folga)</td><td>250 GB ou mais, de preferência SSD</td></tr>
+    <tr><td>Placa de vídeo</td><td>não precisa</td><td>NVIDIA RTX 3060 ou equivalente AMD, ou melhor</td></tr>
+  </table>
+  <p>O NOMAD em si é leve. O que enche o disco é o conteúdo que você escolhe depois. A Wikipedia completa em inglês, com imagens, tem cerca de 125 GB; só texto é bem menos. Já o assistente de IA leva a instalação a cerca de 25 GB e precisa de bastante memória, então <strong>ele é opcional</strong>: tudo funciona sem ele.</p>
+  <p>Um PC antigo funciona bem como biblioteca offline. A IA, em máquina antiga, tende a ser lenta. Isso é esperado.</p>
+</section>
+
+<section id="s1">
+  <h2><span class="n">1</span>Baixe o Debian 12</h2>
+  <p>No segundo computador, baixe a imagem <strong>netinst, 64 bits (amd64)</strong> do Debian 12.15, direto do site oficial:</p>
+  <p><a href="https://cdimage.debian.org/cdimage/archive/12.15.0/amd64/iso-cd/debian-12.15.0-amd64-netinst.iso" target="_blank" rel="noopener">debian-12.15.0-amd64-netinst.iso</a> (cerca de 700 MB)</p>
+  <p>Página oficial das imagens do Debian 12: <a href="https://www.debian.org/releases/bookworm/debian-installer/" target="_blank" rel="noopener">debian.org/releases/bookworm/debian-installer</a>.</p>
+  <div class="box warn">
+    <b class="t">Por que não o Debian mais novo?</b>
+    A página de download do Debian já oferece o Debian 13 por padrão. A documentação do Project NOMAD lista como suportados o Ubuntu e o <strong>Debian 12</strong>, então este guia usa o 12. Se o link acima parar de funcionar um dia, use o Ubuntu pelo guia oficial do NOMAD.
+  </div>
+  <div class="box">
+    <b class="t">Prefere Ubuntu?</b>
+    O projeto recomenda hoje o Ubuntu Desktop 26.04 LTS (o 24.04 e o Debian 12 também são suportados). Se escolher Ubuntu, siga o <a href="https://www.projectnomad.us/install" target="_blank" rel="noopener">guia oficial de instalação</a>. Este guia usa Debian.
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="n">2</span>Grave o pendrive</h2>
+  <ol>
+    <li>Instale o <a href="https://etcher.balena.io" target="_blank" rel="noopener">balenaEtcher</a> (Windows, Mac ou Linux).</li>
+    <li>Escolha o arquivo <code>.iso</code> do Debian.</li>
+    <li>Escolha o pendrive.</li>
+    <li>Clique em <strong>Flash</strong> e espere terminar.</li>
+  </ol>
+  <p>Se preferir o <a href="https://rufus.ie" target="_blank" rel="noopener">Rufus</a> no Windows, quando ele perguntar o modo, escolha <strong>Modo imagem DD</strong>.</p>
+</section>
+
+<section id="s3">
+  <h2><span class="n">3</span>Inicie o PC pelo pendrive</h2>
+  <ol>
+    <li>Espete o pendrive no PC que será o servidor e ligue-o.</li>
+    <li>Assim que ligar, aperte repetidamente a tecla do menu de boot ou da BIOS. As mais comuns são <strong>F2</strong>, <strong>Delete</strong>, <strong>F12</strong> e <strong>Esc</strong>. Em muitos HP é <strong>Esc</strong> e depois <strong>F9</strong>; o nome da tecla aparece rapidinho na tela de início.</li>
+    <li>Escolha o pendrive como primeiro dispositivo de boot, salve e saia.</li>
+  </ol>
+  <p>Vai aparecer o menu do instalador do Debian.</p>
+</section>
+
+<section id="s4">
+  <h2><span class="n">4</span>Instale o Debian</h2>
+  <p>Escolha <strong>Graphical install</strong> (ou <strong>Install</strong>, se preferir o modo texto). As telas pedem, em ordem:</p>
+  <ol>
+    <li><strong>Idioma</strong>: Português (Brasil) ou Portuguese; <strong>país</strong> e <strong>teclado</strong> conforme o seu.</li>
+    <li><strong>Rede</strong>: se estiver com cabo, ele configura sozinho. Dê um nome ao computador (por exemplo, <code>nomad</code>) e deixe o domínio em branco.</li>
+    <li><strong>Senha do root</strong>: <em>deixe em branco</em>. Assim o seu usuário já nasce com permissão de administrador (sudo) e você evita um tropeço adiante.</li>
+    <li><strong>Seu usuário e senha</strong>: crie e anote.</li>
+    <li><strong>Particionamento</strong>: escolha <em>Guiado, usar o disco inteiro</em> (isso apaga o disco). Aceite o esquema sugerido e confirme.</li>
+    <li><strong>Espelho de pacotes</strong>: aceite o sugerido para o seu país.</li>
+    <li><strong>Seleção de software</strong>: marque <em>servidor SSH</em> e <em>utilitários padrão do sistema</em>. A área de trabalho gráfica é opcional: o NOMAD roda sem ela, e você o acessa pelo navegador de qualquer aparelho da casa.</li>
+    <li><strong>Instalar o GRUB</strong>: responda <em>Sim</em> e escolha o disco principal.</li>
+    <li>Quando terminar, remova o pendrive e reinicie.</li>
+  </ol>
+  <div class="box warn">
+    <b class="t">Deu "sudo: command not found" ou "not in the sudoers file"?</b>
+    Isso acontece se você definiu senha de root na instalação. Resolva assim, trocando <code>SEU_USUARIO</code>:
+    <div class="code"><pre>su -
+apt update &amp;&amp; apt install -y sudo
+usermod -aG sudo SEU_USUARIO
+exit</pre><button class="copy" type="button">Copiar</button></div>
+    Depois saia da sessão e entre de novo.
+  </div>
+  <p>Já logado, atualize o sistema:</p>
+  <div class="code"><pre>sudo apt update &amp;&amp; sudo apt upgrade -y</pre><button class="copy" type="button">Copiar</button></div>
+</section>
+
+<section id="s5">
+  <h2><span class="n">5</span>Instale o Project NOMAD</h2>
+  <p>Estes são os comandos do README oficial do projeto. Cole tudo no terminal:</p>
+  <div class="code"><pre>sudo apt-get update &amp;&amp; \
+sudo apt-get install -y curl &amp;&amp; \
+curl -fsSL https://raw.githubusercontent.com/Crosstalk-Solutions/project-nomad/refs/heads/main/install/install_nomad.sh \
+  -o install_nomad.sh &amp;&amp; \
+sudo bash install_nomad.sh</pre><button class="copy" type="button">Copiar</button></div>
+  <p>O instalador cuida do Docker e do resto. Ao final ele mostra o endereço de acesso. Para descobrir o IP do servidor depois:</p>
+  <div class="code"><pre>hostname -I</pre><button class="copy" type="button">Copiar</button></div>
+  <div class="box">
+    <b class="t">Quer ler o script antes de rodar?</b>
+    É uma boa prática. Depois do <code>curl</code>, abra com <code>less install_nomad.sh</code> antes do <code>sudo bash</code>. O código é aberto, no repositório
+    <a href="https://github.com/Crosstalk-Solutions/project-nomad" target="_blank" rel="noopener">Crosstalk-Solutions/project-nomad</a>.
+  </div>
+</section>
+
+<section id="s6">
+  <h2><span class="n">6</span>Configure no navegador</h2>
+  <p>Em qualquer aparelho conectado à mesma rede, abra:</p>
+  <div class="code"><pre>http://IP-DO-SERVIDOR:8080</pre><button class="copy" type="button">Copiar</button></div>
+  <p>No próprio servidor, também funciona <code>http://localhost:8080</code>. Você vai ver o painel do NOMAD (o "Command Center"). Comece pelo <strong>Easy Setup</strong>:</p>
+  <ol>
+    <li><strong>Aplicativos</strong>: Biblioteca de informação (Wikipedia e referências), Plataforma de ensino (Khan Academy) e, se quiser, o Assistente de IA.</li>
+    <li><strong>Mapas</strong>: escolha países ou regiões. Cada um pode ter alguns gigabytes.</li>
+    <li><strong>Conteúdo</strong>: profundidade da Wikipedia e coleções. Cada categoria tem níveis Essencial, Padrão e Completo. Acompanhe a barra de armazenamento no topo.</li>
+    <li>Clique em <strong>Complete Setup</strong>. Os downloads levam um tempo, que depende da sua internet e do que você escolheu.</li>
+  </ol>
+  <details>
+    <summary>Quero a IA, mas meu PC é fraco</summary>
+    <p>O assistente de IA é opcional, e a memória que ele usa é aproximadamente o tamanho do modelo baixado. Em máquina antiga, comece sem ele ou com um modelo pequeno, e só depois experimente. Também é possível apontar o NOMAD para um servidor de IA em outro computador (nas configurações do assistente), se você tiver uma máquina mais forte na rede.</p>
+  </details>
+</section>
+
+<section id="s7">
+  <h2><span class="n">7</span>Teste de verdade: tire a internet</h2>
+  <ol>
+    <li>Espere os downloads terminarem.</li>
+    <li>Desconecte o servidor da internet (tire o cabo do roteador ou desligue o Wi-Fi do roteador). A rede local pode continuar.</li>
+    <li>No celular, conectado à rede local, abra <code>http://IP-DO-SERVIDOR:8080</code> e procure um artigo na Wikipedia.</li>
+  </ol>
+  <p>Se abriu, está funcionando sem internet.</p>
+  <div class="box warn">
+    <b class="t">Segurança</b>
+    O NOMAD não tem login por padrão. Use só na sua rede local e não o exponha direto na internet.
+  </div>
+</section>
+
+<section id="dicas">
+  <h2>Se algo der errado</h2>
+  <details>
+    <summary>O PC não inicia pelo pendrive</summary>
+    <p>Confirme na BIOS que o pendrive é o primeiro da ordem de boot. Em PCs mais novos, desative o Secure Boot se ele bloquear o boot. Tente outra porta USB e regrave o pendrive.</p>
+  </details>
+  <details>
+    <summary>O Wi-Fi não aparece no instalador</summary>
+    <p>Algumas placas Wi-Fi precisam de firmware extra. O jeito mais simples é instalar por cabo de rede.</p>
+  </details>
+  <details>
+    <summary>A página do NOMAD não abre</summary>
+    <p>Reinicie os serviços no servidor:</p>
+    <div class="code"><pre>sudo bash /opt/project-nomad/start_nomad.sh</pre><button class="copy" type="button">Copiar</button></div>
+    <p>Confirme o IP com <code>hostname -I</code> e que o aparelho está na mesma rede.</p>
+  </details>
+  <details>
+    <summary>Comandos úteis de manutenção (oficiais)</summary>
+    <div class="code"><pre>sudo bash /opt/project-nomad/start_nomad.sh    # iniciar
+sudo bash /opt/project-nomad/stop_nomad.sh     # parar
+sudo bash /opt/project-nomad/update_nomad.sh   # atualizar o painel</pre><button class="copy" type="button">Copiar</button></div>
+  </details>
+  <p>Ajuda da comunidade: <a href="https://discord.com/invite/crosstalksolutions" target="_blank" rel="noopener">Discord do Crosstalk Solutions</a> (canal #project-nomad) e <a href="https://github.com/Crosstalk-Solutions/project-nomad/issues" target="_blank" rel="noopener">GitHub Issues</a>.</p>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>O Project NOMAD é gratuito e de código aberto (Apache 2.0), criado pela Crosstalk Solutions. Site oficial: <a href="https://www.projectnomad.us" target="_blank" rel="noopener">projectnomad.us</a>. Os requisitos e os comandos do NOMAD vêm do <a href="https://github.com/Crosstalk-Solutions/project-nomad" target="_blank" rel="noopener">README</a> e do <a href="https://www.projectnomad.us/install" target="_blank" rel="noopener">guia de instalação</a> oficiais. Este é um guia independente, em português, feito por <strong>@o_felipeassis</strong>. Os passos do Debian são um roteiro geral do instalador e podem variar um pouco entre versões.</p>
+  </div>
+</footer>
+
+<script>
+document.querySelectorAll('button.copy').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var pre = btn.parentElement.querySelector('pre');
+    var text = pre.innerText;
+    function done(ok){ btn.textContent = ok ? 'Copiado' : 'Selecione'; setTimeout(function(){ btn.textContent='Copiar'; }, 1600); }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ done(false); });
+    } else {
+      var r = document.createRange(); r.selectNodeContents(pre);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      try { done(document.execCommand('copy')); } catch(e){ done(false); }
+    }
+  });
+});
+</script>
+</body>
+</html>
